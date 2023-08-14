@@ -5,13 +5,22 @@ from flask import jsonify
 
 api = Api(app)
 
+class Home(Resource):
+    def get(self):
+        return {"messages": "Helllo, World!"}
+
 class CreateItemResource(Resource):
+    def get(self):
+        items = Item.query.all()
+        items_list = [item.serialize() for item in items]
+        return {'items': items_list}
+
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True)
         parser.add_argument('brand', type=str)
         parser.add_argument('stock', type=int)
-        parser.add_argument('status', type=str)
+        parser.add_argument('status', type=bool)
         args = parser.parse_args()
 
         # Check if an item with the same name already exists
@@ -23,7 +32,6 @@ class CreateItemResource(Resource):
         db.session.commit()
         return {'message': 'Item created', 'id': new_item.id}, 201
 
-    
 
 class ItemDetailResource(Resource):
     def get(self, item_id):
@@ -37,7 +45,7 @@ class ItemDetailResource(Resource):
         parser.add_argument('name', type=str, required=True)
         parser.add_argument('brand', type=str, required=True)
         parser.add_argument('stock', type=int, required=True)
-        parser.add_argument('status', type=str, required=True)
+        parser.add_argument('status', type=bool, required=True)
         args = parser.parse_args()
 
         item = Item.query.get(item_id)
@@ -60,6 +68,8 @@ class ItemDetailResource(Resource):
             return {'message': 'Item deleted successfully'}, 200
         return {'message': 'Item not found'}, 404
 
+
+
 class ItemPaginationResource(Resource):
     def get(self):
         # return jsonify({"message": "Pagination"})
@@ -79,7 +89,27 @@ class ItemPaginationResource(Resource):
         return jsonify(response)
         # return response
 
+class ItemBatchInsert(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('items', type=list, location='json', required=True)
+        args = parser.parse_args()
 
-api.add_resource(CreateItemResource, '/items/create')
+        items_to_add = args['items']
+
+        new_items = []
+        for item_data in items_to_add:
+            # print(item_data)
+            new_item = Item(name=item_data['name'], brand=item_data['brand'], stock=item_data['stock'], status=item_data['status'])
+            new_items.append(new_item)
+
+        db.session.add_all(new_items)
+        db.session.commit()
+
+        return {'message': f'{len(new_items)} items added successfully'}, 201
+
+api.add_resource(ItemBatchInsert, '/item_batch_insert')
+api.add_resource(CreateItemResource, '/all_items', '/items/create')
 api.add_resource(ItemDetailResource, '/items/<int:item_id>')
 api.add_resource(ItemPaginationResource, '/items')
+api.add_resource(Home, '/')

@@ -5,7 +5,7 @@ class Item(db.Model):
     name = db.Column(db.String(100), unique=True, nullable=False)
     brand = db.Column(db.String(30), nullable=False)
     stock = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(25))
+    status = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<Item {self.name}>'
